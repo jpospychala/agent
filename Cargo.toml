@@ -1,9 +1,10 @@
 [package]
 name = "agent"
+description = "Library for reading system information provided by procfs"
+license = "MIT"
 version = "0.1.0"
 authors = ["Jacek Pospychala <jacek.pospychala@gmail.com>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+sysconf = "0.3.4"

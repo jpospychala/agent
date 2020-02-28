@@ -1,6 +1,13 @@
+//! # Agent
+//!
+//! `agent` is a library for reading system information provided by `procfs`.
+extern crate sysconf;
+
 use std::{fs, io};
 use std::io::prelude::*;
+use sysconf::pagesize;
 
+// List all processes
 pub fn ps() -> Result<Vec<Stat>, io::Error> {
   let mut v: Vec<Stat> = vec!();
   for entry in fs::read_dir("/proc")? {
@@ -21,6 +28,7 @@ pub fn ps() -> Result<Vec<Stat>, io::Error> {
   Ok(v)
 }
 
+// Process stat as read in /proc/<pid>/stat
 #[derive(Debug, PartialEq)]
 pub struct Stat {
     pub pid: usize,
@@ -35,7 +43,7 @@ pub struct Stat {
     // minflt
     // cminflt
     // majflt
-    // cmajflt 
+    // cmajflt
     pub utime: usize, // 13
     pub stime: usize,
     pub cutime: usize,
@@ -102,7 +110,7 @@ impl From<&str> for Stat {
             itrealvalue: stat[20 + shift].parse().unwrap(),
             starttime: stat[21 + shift].parse().unwrap(),
             vsize: stat[22 + shift].parse().unwrap(),
-            rss: stat[23 + shift].parse().unwrap(),
+            rss: stat[23 + shift].parse::<usize>().unwrap() * pagesize(),
             rsslim: stat[24 + shift].parse().unwrap(),
             exit_code: stat[51 + shift].parse().unwrap(),
         }
