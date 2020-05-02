@@ -7,6 +7,8 @@ use std::{fs, io};
 use std::io::prelude::*;
 use sysconf::pagesize;
 
+pub mod log;
+
 // List all processes
 pub fn ps() -> Result<Vec<Stat>, io::Error> {
   let mut v: Vec<Stat> = vec!();
@@ -54,7 +56,7 @@ pub struct Stat {
   pub itrealvalue: usize,
   pub starttime: usize,
   pub vsize: usize,  // kbytes
-  pub rss: usize,  // blocks
+  pub rss: usize,  // bytes
   pub rsslim: usize,
   // startcode
   // endcode
@@ -140,7 +142,7 @@ mod tests {
       itrealvalue: 21,
       starttime: 22,
       vsize: 23,
-      rss: 24,
+      rss: 98304,
       rsslim: 25,
       exit_code: 52,
     };
