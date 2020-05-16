@@ -43,3 +43,7 @@ plot for [col=2:*] 'log.dat' using 0:col with lines title columnheader
 EOF
 $ gnuplot < diag.gnuplot > diagram.png
 ```
+
+Sample diagram
+
+![Sample diagram](sample.svg)
