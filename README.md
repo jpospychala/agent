@@ -47,3 +47,5 @@ $ gnuplot < diag.gnuplot > diagram.png
 Sample diagram
 
 ![Sample diagram](sample.svg)
+
+![Sample diagram](sample-es.svg)

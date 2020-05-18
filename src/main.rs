@@ -1,4 +1,4 @@
-use agent::{Stat, ps};
+use agent::{Stat, IO, ps};
 use agent::log::Log;
 use std::{thread, time};
 use std::sync::Arc;
@@ -23,7 +23,7 @@ fn record() -> Result<(), io::Error> {
   .expect("Error setting Ctrl-C handler");
 
   while is_up.load(Ordering::Relaxed) {
-    let ps1 : Vec<Stat> = ps().unwrap();
+    let ps1 : Vec<(Stat, IO)> = ps().unwrap();
     log.append(ps1);
     thread::sleep(one_sec);
   }

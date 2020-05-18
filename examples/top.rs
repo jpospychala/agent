@@ -23,18 +23,18 @@ fn loop_fn() {
     let mut ps2 = ps().unwrap();
     thread::sleep(one_sec);
     ps2.append(&mut ps1);
-    ps2.sort_by(|a, b| a.pid.partial_cmp(&b.pid).unwrap());
+    ps2.sort_by(|a, b| a.0.pid.partial_cmp(&b.0.pid).unwrap());
     let mut i = ps2.iter();
     let mut prev = i.next().unwrap();
 
     let mut deltas = vec!();
     for a in i {
-        if prev.pid == a.pid {
-            let delta = prev.utime as isize - a.utime as isize;
+        if prev.0.pid == a.0.pid {
+            let delta = prev.0.utime as isize - a.0.utime as isize;
             deltas.push(Delta {
-                pid: prev.pid,
-                ppid: prev.ppid,
-                name: prev.name.as_str(),
+                pid: prev.0.pid,
+                ppid: prev.0.ppid,
+                name: prev.0.name.as_str(),
                 delta,
             });
         }

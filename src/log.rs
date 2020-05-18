@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::{time, cmp, io};
 use std::io::Write;
-use crate::Stat;
+use crate::{Stat, IO};
 use sysconf::raw::{sysconf, SysconfVariable};
 
 pub type Pid = usize;
@@ -39,6 +39,8 @@ pub struct ProcessSnap {
   pid: Pid,
   rss: usize,
   cpu_usage: usize,
+  io_read_bytes: usize,
+  io_write_bytes: usize,
 }
 
 impl From<&Stat> for ProcessDescr {
@@ -60,7 +62,7 @@ impl From<&Stat> for ProcessDescr {
 }
 
 impl ProcessSnap {
-  fn from(stat: &Stat, pdescr: &ProcessDescr) -> Self {
+  fn from(stat: &Stat, io: &IO, pdescr: &ProcessDescr) -> Self {
     let cpu_spent = pdescr.utime + pdescr.stime + pdescr.cutime + pdescr.cstime;
     let last_cpu_spent = pdescr.last_utime.unwrap_or(pdescr.utime) +
       pdescr.last_stime.unwrap_or(pdescr.stime) +
@@ -73,6 +75,8 @@ impl ProcessSnap {
       pid: stat.pid,
       rss: stat.rss,
       cpu_usage,
+      io_read_bytes: io.read_bytes,
+      io_write_bytes: io.write_bytes,
     }
   }
 }
@@ -86,8 +90,9 @@ impl Log {
     }
   }
 
-  pub fn append(&mut self, ps: Vec<Stat>) {
-    for stat in ps.iter() {
+  pub fn append(&mut self, ps: Vec<(Stat, IO)>) {
+    for tuple in ps.iter() {
+      let stat = &tuple.0;
       match self.processes.get_mut(&stat.pid) {
        None => { self.processes.insert(stat.pid, ProcessDescr::from(stat)); },
        Some(p)  => {
@@ -105,7 +110,9 @@ impl Log {
     }
     let snapshot = Snapshot {
       ts: time::SystemTime::now().duration_since(self.start_ts).unwrap().as_millis(),
-      processes: ps.iter().map(|stat| ProcessSnap::from(stat, self.processes.get(&stat.pid).unwrap())).collect()
+      processes: ps.iter().map(|stat|
+        ProcessSnap::from(&stat.0, &stat.1, self.processes.get(&stat.0.pid).unwrap())
+      ).collect()
     };
     self.timeline.push(snapshot);
   }
@@ -135,6 +142,8 @@ impl Log {
       cols.insert(p.pid, idx);
       write.write(format!(" \"{}\"", p.name).as_bytes())?;
       write.write(format!(" \"{}\"", p.name).as_bytes())?;
+      write.write(format!(" \"{}\"", p.name).as_bytes())?;
+      write.write(format!(" \"{}\"", p.name).as_bytes())?;
       idx += 1;
     }
     write.write(b"\n")?;
@@ -142,7 +151,7 @@ impl Log {
       let mut values = vec!["-".to_string(); cols.len()];
       for p in t.processes.iter() {
         if let Some(col) = cols.get(&p.pid) {
-          values[*col] = format!("{} {}", p.rss/M, p.cpu_usage);
+          values[*col] = format!("{} {} {} {}", p.rss/M, p.cpu_usage, p.io_read_bytes/M, p.io_write_bytes/M);
         }
       }
       let line = format!("{} {}\n", t.ts, values.join(" "));
@@ -179,11 +188,14 @@ mod tests {
   fn test_process_stat_from_stat() {
     let stat = having_stat();
     let descr = having_descr();
-    let pstat = ProcessSnap::from(&stat, &descr);
+    let io = having_io();
+    let pstat = ProcessSnap::from(&stat, &io, &descr);
     assert_eq!(pstat, ProcessSnap {
       pid: 1,
       rss: 98304,
       cpu_usage: 0,
+      io_read_bytes: 5,
+      io_write_bytes: 6,
     })
   }
 
@@ -204,6 +216,18 @@ mod tests {
       last_stime: None,
       last_cutime: None,
       last_cstime: None,
+    }
+  }
+
+  fn having_io() -> IO {
+    IO {
+      rchar: 1,
+      wchar: 2,
+      syscr: 3,
+      syscw: 4,
+      read_bytes: 5,
+      write_bytes: 6,
+      cancelled_write_bytes: 7,
     }
   }
 }

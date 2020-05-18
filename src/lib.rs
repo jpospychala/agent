@@ -10,20 +10,27 @@ use sysconf::pagesize;
 pub mod log;
 
 // List all processes
-pub fn ps() -> Result<Vec<Stat>, io::Error> {
-  let mut v: Vec<Stat> = vec!();
+pub fn ps() -> Result<Vec<(Stat, IO)>, io::Error> {
+  let mut v: Vec<(Stat, IO)> = vec!();
   for entry in fs::read_dir("/proc")? {
-    let mut path = entry?.path();
+    let path = entry?.path();
     if path.ends_with("self") {
       continue;
     }
     if path.is_dir() {
-      path.push("stat");
-      if path.exists() && path.is_file() {
-        let mut file = fs::File::open(path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        v.push(Stat::from(contents.as_str()))
+      let mut stat_path = path.clone();
+      stat_path.push("stat");
+      let mut io_path = path.clone();
+      io_path.push("io");
+      if stat_path.exists() && stat_path.is_file() {
+        let mut stat_file = fs::File::open(stat_path)?;
+        let mut stat_contents = String::new();
+        stat_file.read_to_string(&mut stat_contents)?;
+
+        let mut io_file = fs::File::open(io_path)?;
+        let mut io_contents = String::new();
+        io_file.read_to_string(&mut io_contents)?;
+        v.push((Stat::from(stat_contents.as_str()), IO::from(io_contents.as_str())))
       }
     }
   }
@@ -87,6 +94,18 @@ pub struct Stat {
   pub exit_code: usize,
 }
 
+// Process IO statistics as read in /proc/<pid>/io
+#[derive(Debug, PartialEq, Clone)]
+pub struct IO {
+  pub rchar: usize,
+  pub wchar: usize,
+  pub syscr: usize,
+  pub syscw: usize,
+  pub read_bytes: usize,
+  pub write_bytes: usize,
+  pub cancelled_write_bytes: usize,
+}
+
 impl From<&str> for Stat {
   fn from(contents: &str) -> Self {
     let stat: Vec<&str> = contents.split_ascii_whitespace().collect();
@@ -119,6 +138,22 @@ impl From<&str> for Stat {
   }
 }
 
+impl From<&str> for IO {
+  fn from(contents: &str) -> Self {
+    let words: Vec<&str> = contents.split_ascii_whitespace().collect();
+
+    IO {
+      rchar: words[1].parse().unwrap(),
+      wchar: words[3].parse().unwrap(),
+      syscr: words[5].parse().unwrap(),
+      syscw: words[7].parse().unwrap(),
+      read_bytes: words[9].parse().unwrap(),
+      write_bytes: words[11].parse().unwrap(),
+      cancelled_write_bytes: words[13].parse().unwrap(),
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -147,5 +182,28 @@ mod tests {
       exit_code: 52,
     };
     assert_eq!(Stat::from(stat), pinfo);
+  }
+
+  #[test]
+  fn test_io_from() {
+    let s = "rchar: 1693633473
+wchar: 929127024
+syscr: 700351
+syscw: 208865
+read_bytes: 199962624
+write_bytes: 580358144
+cancelled_write_bytes: 53547008";
+
+    let expected = IO {
+      rchar: 1693633473,
+      wchar: 929127024,
+      syscr: 700351,
+      syscw: 208865,
+      read_bytes: 199962624,
+      write_bytes: 580358144,
+      cancelled_write_bytes: 53547008
+    };
+
+    assert_eq!(IO::from(s), expected);
   }
 }

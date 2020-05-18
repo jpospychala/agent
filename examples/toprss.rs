@@ -1,6 +1,6 @@
 /* Prints top 5 processes by rss
  */
-use agent::{Stat, ps};
+use agent::{Stat, IO, ps};
 use std::{thread, time};
 
 
@@ -13,11 +13,11 @@ fn main() {
 }
 
 fn loop_fn() {
-  let mut r: Vec<Stat> = ps().unwrap();
-  r.sort_by(|a, b| b.rss.partial_cmp(&a.rss).unwrap());
+  let mut r: Vec<(Stat, IO)> = ps().unwrap();
+  r.sort_by(|a, b| b.0.rss.partial_cmp(&a.0.rss).unwrap());
   let mut max = 5;
   for i in r.iter() {
-    println!("{} {} {} {}", i.pid, i.name, i.rss, i.vsize);
+    println!("{} {} {} {}", i.0.pid, i.0.name, i.0.rss, i.0.vsize);
     max -= 1;
     if max == 0 {
       break;
