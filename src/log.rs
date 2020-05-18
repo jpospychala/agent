@@ -28,10 +28,10 @@ pub struct ProcessDescr {
   stime: usize,
   cutime: usize,
   cstime: usize,
-  last_utime: usize,
-  last_stime: usize,
-  last_cutime: usize,
-  last_cstime: usize,
+  last_utime: Option<usize>,
+  last_stime: Option<usize>,
+  last_cutime: Option<usize>,
+  last_cstime: Option<usize>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -51,10 +51,10 @@ impl From<&Stat> for ProcessDescr {
       stime: stat.stime,
       cutime: stat.cutime,
       cstime: stat.cstime,
-      last_utime: stat.utime,
-      last_stime: stat.stime,
-      last_cutime: stat.cutime,
-      last_cstime: stat.cstime,
+      last_utime: None,
+      last_stime: None,
+      last_cutime: None,
+      last_cstime: None,
     }
   }
 }
@@ -62,7 +62,10 @@ impl From<&Stat> for ProcessDescr {
 impl ProcessSnap {
   fn from(stat: &Stat, pdescr: &ProcessDescr) -> Self {
     let cpu_spent = pdescr.utime + pdescr.stime + pdescr.cutime + pdescr.cstime;
-    let last_cpu_spent = pdescr.last_utime + pdescr.last_stime + pdescr.last_cutime + pdescr.last_cstime;
+    let last_cpu_spent = pdescr.last_utime.unwrap_or(pdescr.utime) +
+      pdescr.last_stime.unwrap_or(pdescr.stime) +
+      pdescr.last_cutime.unwrap_or(pdescr.cutime) +
+      pdescr.last_cstime.unwrap_or(pdescr.cstime);
     let hertz  = sysconf(SysconfVariable::ScClkTck).unwrap() as usize;
     let seconds = 1;
     let cpu_usage =  ((cpu_spent - last_cpu_spent) * 100 / hertz) / seconds;
@@ -89,10 +92,10 @@ impl Log {
        None => { self.processes.insert(stat.pid, ProcessDescr::from(stat)); },
        Some(p)  => {
          p.max_rss = cmp::max(p.max_rss, stat.rss);
-         p.last_utime = p.utime;
-         p.last_stime = p.stime;
-         p.last_cutime = p.cutime;
-         p.last_cstime = p.cstime;
+         p.last_utime = Some(p.utime);
+         p.last_stime = Some(p.stime);
+         p.last_cutime = Some(p.cutime);
+         p.last_cstime = Some(p.cstime);
          p.utime = stat.utime;
          p.stime = stat.stime;
          p.cstime = stat.cstime;
@@ -161,14 +164,14 @@ mod tests {
       name: "a b c".to_string(),
       pid: 1,
       max_rss: 0,
-      utime: 0,
-      stime: 0,
-      cutime: 0,
-      cstime: 0,
-      last_utime: 0,
-      last_stime: 0,
-      last_cutime: 0,
-      last_cstime: 0,
+      utime: 14,
+      stime: 15,
+      cutime: 16,
+      cstime: 17,
+      last_utime: None,
+      last_stime: None,
+      last_cutime: None,
+      last_cstime: None,
     })
   }
 
@@ -197,10 +200,10 @@ mod tests {
       stime: 0,
       cutime: 0,
       cstime: 0,
-      last_utime: 0,
-      last_stime: 0,
-      last_cutime: 0,
-      last_cstime: 0,
+      last_utime: None,
+      last_stime: None,
+      last_cutime: None,
+      last_cstime: None,
     }
   }
 }
